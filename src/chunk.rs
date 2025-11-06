@@ -4,6 +4,11 @@ use crate::value::Value;
 #[derive(Debug, Clone, Copy)]
 pub enum OpCode {
     OpConstant,
+    OpNegate,
+    OpAdd,
+    OpSubtract,
+    OpMultiply,
+    OpDivide,
     OpReturn,
 }
 
