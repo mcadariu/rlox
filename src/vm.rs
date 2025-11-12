@@ -6,13 +6,12 @@ const STACK_MAX: usize = 256;
 #[derive(Debug)]
 pub enum InterpretResult {
     Ok,
-    CompileError,
     RuntimeError,
 }
 
 pub struct VM {
     chunk: Option<Chunk>,
-    ip: usize,  // instruction pointer
+    ip: usize,
     stack: Vec<Value>,
 }
 
@@ -33,24 +32,6 @@ impl VM {
 
     fn run(&mut self) -> InterpretResult {
         loop {
-            #[cfg(feature = "debug_trace_execution")]
-            {
-                // Print the stack
-                print!("          ");
-                for value in &self.stack {
-                    print!("[ ");
-                    crate::value::print_value(*value);
-                    print!(" ]");
-                }
-                println!();
-
-                // Disassemble the current instruction
-                crate::debug::disassemble_instruction(
-                    self.chunk.as_ref().unwrap(),
-                    self.ip
-                );
-            }
-
             let instruction = self.read_byte();
             match instruction {
                 x if x == OpCode::OpConstant as u8 => {
