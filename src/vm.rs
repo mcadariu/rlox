@@ -7,6 +7,7 @@ const STACK_MAX: usize = 256;
 pub enum InterpretResult {
     Ok,
     RuntimeError,
+    CompileError,
 }
 
 pub struct VM {

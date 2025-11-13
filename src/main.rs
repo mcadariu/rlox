@@ -1,44 +1,63 @@
-use crate::chunk::{Chunk, OpCode};
-use crate::vm::VM;
+use std::{env, fs, io, process};
+use std::io::Write;
+use crate::vm::{InterpretResult};
+use crate::scanner::init_scanner;
 
 mod chunk;
 mod debug;
 mod value;
 mod vm;
+mod scanner;
+mod compiler;
 
 fn main() {
-    let mut chunk = Chunk::new();
+    let args: Vec<String> = env::args().collect();
 
-    // Build the expression: -(1.2 + 3.4) / 5.6
+    match args.len() {
+        1 => repl(),
+        2 => run_file(&args[1]),
+        _ => {
+            eprintln!("Usage: rlox [path]");
+            process::exit(64);
+        }
+    }
 
-    // Push 1.2
-    let constant = chunk.add_constant(1.2);
-    chunk.write(OpCode::OpConstant);
-    chunk.write_byte(constant as u8);
+}
 
-    // Push 3.4
-    let constant = chunk.add_constant(3.4);
-    chunk.write(OpCode::OpConstant);
-    chunk.write_byte(constant as u8);
+fn run_file(path: &str) {
+    let source = read_file(path);
+    let result = interpret(&source);
+    match result {
+        InterpretResult::CompileError => process::exit(65),
+        InterpretResult::RuntimeError => process::exit(70),
+        _ => {}
+    }
+}
 
-    // Add: 1.2 + 3.4 = 4.6
-    chunk.write(OpCode::OpAdd);
+fn interpret(source: &str) -> InterpretResult {
+    compile(source);
+    InterpretResult::Ok
+}
 
-    // Negate: -(4.6) = -4.6
-    chunk.write(OpCode::OpNegate);
+fn compile(source: &str) {
+    let scanner = init_scanner(source);
+}
 
-    // Push 5.6
-    let constant = chunk.add_constant(5.6);
-    chunk.write(OpCode::OpConstant);
-    chunk.write_byte(constant as u8);
+fn read_file(path: &str) -> String {
+    fs::read_to_string(path).expect("Failed to read file")
+}
 
-    // Divide: -4.6 / 5.6
-    chunk.write(OpCode::OpDivide);
+fn repl() {
+    let stdin = io::stdin();
+    loop {
+        print!("> ");
+        io::stdout().flush().unwrap();
 
-    chunk.write(OpCode::OpReturn);
-
-    debug::disassemble_chunk(&chunk, "test chunk");
-
-    let mut vm = VM::new();
-    vm.interpret(chunk);
+        let mut line = String::new();
+        match stdin.read_line(&mut line) {
+            Ok(0) => break,  // EOF
+            Ok(_) => interpret(&line),
+            Err(_) => break,
+        };
+    }
 }
