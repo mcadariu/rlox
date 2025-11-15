@@ -1,7 +1,6 @@
 use std::{env, fs, io, process};
 use std::io::Write;
-use crate::vm::{InterpretResult};
-use crate::scanner::init_scanner;
+use crate::vm::{InterpretResult, VM};
 
 mod chunk;
 mod debug;
@@ -11,22 +10,22 @@ mod scanner;
 mod compiler;
 
 fn main() {
+    let mut vm = VM::new();
     let args: Vec<String> = env::args().collect();
 
     match args.len() {
-        1 => repl(),
-        2 => run_file(&args[1]),
+        1 => repl(&mut vm),
+        2 => run_file(&args[1], &mut vm),
         _ => {
             eprintln!("Usage: rlox [path]");
             process::exit(64);
         }
     }
-
 }
 
-fn run_file(path: &str) {
+fn run_file(path: &str, vm: &mut VM) {
     let source = read_file(path);
-    let result = interpret(&source);
+    let result = interpret(&source, vm);
     match result {
         InterpretResult::CompileError => process::exit(65),
         InterpretResult::RuntimeError => process::exit(70),
@@ -34,20 +33,18 @@ fn run_file(path: &str) {
     }
 }
 
-fn interpret(source: &str) -> InterpretResult {
-    compile(source);
-    InterpretResult::Ok
-}
-
-fn compile(source: &str) {
-    let scanner = init_scanner(source);
+fn interpret(source: &str, vm: &mut VM) -> InterpretResult {
+    match compiler::compile(source) {
+        Some(chunk) => vm.interpret(chunk),
+        None => InterpretResult::CompileError,
+    }
 }
 
 fn read_file(path: &str) -> String {
     fs::read_to_string(path).expect("Failed to read file")
 }
 
-fn repl() {
+fn repl(vm: &mut VM) {
     let stdin = io::stdin();
     loop {
         print!("> ");
@@ -56,7 +53,9 @@ fn repl() {
         let mut line = String::new();
         match stdin.read_line(&mut line) {
             Ok(0) => break,  // EOF
-            Ok(_) => interpret(&line),
+            Ok(_) => {
+                interpret(&line, vm);
+            }
             Err(_) => break,
         };
     }

@@ -1,5 +1,6 @@
 use crate::scanner::TokenType::{And, Bang, BangEqual, Class, Comma, Dot, Else, Eof, Equal, EqualEqual, False, For, Fun, Greater, GreaterEqual, Identifier, If, LeftBrace, LeftParen, Less, LessEqual, Minus, Nil, Number, Or, Plus, Print, Return, RightBrace, RightParen, Semicolon, Slash, Star, String, Super, This, True, Var, While};
 
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen,
@@ -48,6 +49,7 @@ pub enum TokenType {
     Eof,
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct Token<'a> {
     pub token_type: TokenType,
     pub lexeme: &'a str,
@@ -61,7 +63,7 @@ pub struct Scanner<'a> {
     line: i32,
 }
 
-pub fn init_scanner(source: &str) -> Scanner {
+pub fn init_scanner(source: &str) -> Scanner<'_> {
     Scanner {
         source,
         start: 0,
