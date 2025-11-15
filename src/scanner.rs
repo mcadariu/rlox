@@ -1,4 +1,9 @@
-use crate::scanner::TokenType::{And, Bang, BangEqual, Class, Comma, Dot, Else, Eof, Equal, EqualEqual, False, For, Fun, Greater, GreaterEqual, Identifier, If, LeftBrace, LeftParen, Less, LessEqual, Minus, Nil, Number, Or, Plus, Print, Return, RightBrace, RightParen, Semicolon, Slash, Star, String, Super, This, True, Var, While};
+use crate::scanner::TokenType::{
+    And, Bang, BangEqual, Class, Comma, Dot, Else, Eof, Equal, EqualEqual, False, For, Fun,
+    Greater, GreaterEqual, Identifier, If, LeftBrace, LeftParen, Less, LessEqual, Minus, Nil,
+    Number, Or, Plus, Print, Return, RightBrace, RightParen, Semicolon, Slash, Star, String, Super,
+    This, True, Var, While,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
@@ -84,14 +89,12 @@ impl<'a> Scanner<'a> {
         let c = self.advance();
 
         if self.is_alpha(c) {
-            return self.identifier()
+            return self.identifier();
         }
 
         if self.is_digit(c) {
-            return self.number()
+            return self.number();
         }
-
-
 
         match c {
             '(' => self.make_token(LeftParen),

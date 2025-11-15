@@ -1,18 +1,18 @@
 use crate::chunk::{Chunk, OpCode};
-use crate::scanner::{init_scanner, Scanner, Token, TokenType};
+use crate::scanner::{Scanner, Token, TokenType, init_scanner};
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 enum Precedence {
     None,
-    Assignment,  // =
-    Or,          // or
-    And,         // and
-    Equality,    // == !=
-    Comparison,  // < > <= >=
-    Term,        // + -
-    Factor,      // * /
-    Unary,       // ! -
-    Call,        // . ()
+    Assignment, // =
+    Or,         // or
+    And,        // and
+    Equality,   // == !=
+    Comparison, // < > <= >=
+    Term,       // + -
+    Factor,     // * /
+    Unary,      // ! -
+    Call,       // . ()
     Primary,
 }
 
@@ -129,7 +129,8 @@ impl<'a> Compiler<'a> {
     fn compile(mut self) -> Option<Chunk> {
         self.parser.advance();
         self.expression();
-        self.parser.consume(TokenType::Eof, "Expect end of expression.");
+        self.parser
+            .consume(TokenType::Eof, "Expect end of expression.");
         self.end_compiler();
 
         if self.parser.had_error {
@@ -150,7 +151,8 @@ impl<'a> Compiler<'a> {
 
     fn grouping(&mut self) {
         self.expression();
-        self.parser.consume(TokenType::RightParen, "Expect ')' after expression.");
+        self.parser
+            .consume(TokenType::RightParen, "Expect ')' after expression.");
     }
 
     fn unary(&mut self) {
@@ -203,8 +205,14 @@ impl<'a> Compiler<'a> {
 
     fn get_rule(&self, token_type: TokenType) -> ParseRule<'a> {
         match token_type {
-            TokenType::LeftParen => ParseRule::new(Some(Compiler::grouping), None, Precedence::None),
-            TokenType::Minus => ParseRule::new(Some(Compiler::unary), Some(Compiler::binary), Precedence::Term),
+            TokenType::LeftParen => {
+                ParseRule::new(Some(Compiler::grouping), None, Precedence::None)
+            }
+            TokenType::Minus => ParseRule::new(
+                Some(Compiler::unary),
+                Some(Compiler::binary),
+                Precedence::Term,
+            ),
             TokenType::Plus => ParseRule::new(None, Some(Compiler::binary), Precedence::Term),
             TokenType::Slash => ParseRule::new(None, Some(Compiler::binary), Precedence::Factor),
             TokenType::Star => ParseRule::new(None, Some(Compiler::binary), Precedence::Factor),
@@ -241,7 +249,11 @@ struct ParseRule<'a> {
 }
 
 impl<'a> ParseRule<'a> {
-    fn new(prefix: Option<ParseFn<'a>>, infix: Option<ParseFn<'a>>, precedence: Precedence) -> Self {
+    fn new(
+        prefix: Option<ParseFn<'a>>,
+        infix: Option<ParseFn<'a>>,
+        precedence: Precedence,
+    ) -> Self {
         ParseRule {
             prefix,
             infix,

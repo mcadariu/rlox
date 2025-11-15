@@ -1,14 +1,12 @@
 pub type Value = f64;
 
 struct ValueArray {
-    values: Vec<Value>
+    values: Vec<Value>,
 }
 
 impl ValueArray {
     fn new() -> Self {
-        ValueArray {
-            values: Vec::new()
-        }
+        ValueArray { values: Vec::new() }
     }
 
     fn write(&mut self, value: Value) {

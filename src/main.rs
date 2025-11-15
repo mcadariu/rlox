@@ -1,13 +1,13 @@
-use std::{env, fs, io, process};
-use std::io::Write;
 use crate::vm::{InterpretResult, VM};
+use std::io::Write;
+use std::{env, fs, io, process};
 
 mod chunk;
+mod compiler;
 mod debug;
+mod scanner;
 mod value;
 mod vm;
-mod scanner;
-mod compiler;
 
 fn main() {
     let mut vm = VM::new();
@@ -52,7 +52,7 @@ fn repl(vm: &mut VM) {
 
         let mut line = String::new();
         match stdin.read_line(&mut line) {
-            Ok(0) => break,  // EOF
+            Ok(0) => break, // EOF
             Ok(_) => {
                 interpret(&line, vm);
             }
