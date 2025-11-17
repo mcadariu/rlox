@@ -7,7 +7,6 @@ use crate::scanner::TokenType::{
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
-    // Single-character tokens.
     LeftParen,
     RightParen,
     LeftBrace,
@@ -19,7 +18,6 @@ pub enum TokenType {
     Semicolon,
     Slash,
     Star,
-    // One or two character tokens.
     Bang,
     BangEqual,
     Equal,
@@ -28,11 +26,9 @@ pub enum TokenType {
     GreaterEqual,
     Less,
     LessEqual,
-    // Literals.
     Identifier,
     String,
     Number,
-    // Keywords.
     And,
     Class,
     Else,
@@ -241,7 +237,7 @@ impl<'a> Scanner<'a> {
     }
 
     fn is_alpha(&self, c: char) -> bool {
-        (c > 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_')
+        (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_')
     }
 
     fn identifier(&mut self) -> Token<'a> {
