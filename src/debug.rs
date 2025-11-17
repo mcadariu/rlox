@@ -17,11 +17,18 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize) -> usize {
 
     match instruction {
         x if x == OpCode::OpConstant as u8 => constant_instruction("OP_CONSTANT", chunk, offset),
-        x if x == OpCode::OpNegate as u8 => simple_instruction("OP_NEGATE", offset),
+        x if x == OpCode::OpNil as u8 => simple_instruction("OP_NIL", offset),
+        x if x == OpCode::OpTrue as u8 => simple_instruction("OP_TRUE", offset),
+        x if x == OpCode::OpFalse as u8 => simple_instruction("OP_FALSE", offset),
+        x if x == OpCode::OpEqual as u8 => simple_instruction("OP_EQUAL", offset),
+        x if x == OpCode::OpGreater as u8 => simple_instruction("OP_GREATER", offset),
+        x if x == OpCode::OpLess as u8 => simple_instruction("OP_LESS", offset),
         x if x == OpCode::OpAdd as u8 => simple_instruction("OP_ADD", offset),
         x if x == OpCode::OpSubtract as u8 => simple_instruction("OP_SUBTRACT", offset),
         x if x == OpCode::OpMultiply as u8 => simple_instruction("OP_MULTIPLY", offset),
         x if x == OpCode::OpDivide as u8 => simple_instruction("OP_DIVIDE", offset),
+        x if x == OpCode::OpNot as u8 => simple_instruction("OP_NOT", offset),
+        x if x == OpCode::OpNegate as u8 => simple_instruction("OP_NEGATE", offset),
         x if x == OpCode::OpReturn as u8 => simple_instruction("OP_RETURN", offset),
         _ => {
             println!("Unknown opcode {}", instruction);
@@ -38,7 +45,7 @@ fn simple_instruction(name: &str, offset: usize) -> usize {
 fn constant_instruction(name: &str, chunk: &Chunk, offset: usize) -> usize {
     let constant_index = chunk.code[offset + 1] as usize;
     print!("{:<16} {:4} '", name, constant_index);
-    value::print_value(chunk.get_constant(constant_index));
+    value::print_value(&chunk.get_constant(constant_index));
     println!("'");
-    offset + 2  
+    offset + 2
 }

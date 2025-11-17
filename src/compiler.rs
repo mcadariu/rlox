@@ -1,4 +1,4 @@
-use crate::chunk::{Chunk, OpCode};
+use crate::chunk::{Chunk, OpCode, Value};
 use crate::scanner::{Scanner, Token, TokenType, init_scanner};
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
@@ -146,7 +146,16 @@ impl<'a> Compiler<'a> {
 
     fn number(&mut self) {
         let value: f64 = self.parser.previous.lexeme.parse().unwrap();
-        self.emit_constant(value);
+        self.emit_constant(Value::number(value));
+    }
+
+    fn literal(&mut self) {
+        match self.parser.previous.token_type {
+            TokenType::False => self.emit_byte(OpCode::OpFalse),
+            TokenType::True => self.emit_byte(OpCode::OpTrue),
+            TokenType::Nil => self.emit_byte(OpCode::OpNil),
+            _ => unreachable!(),
+        }
     }
 
     fn grouping(&mut self) {
@@ -163,6 +172,7 @@ impl<'a> Compiler<'a> {
 
         // Emit the operator instruction
         match operator_type {
+            TokenType::Bang => self.emit_byte(OpCode::OpNot),
             TokenType::Minus => self.emit_byte(OpCode::OpNegate),
             _ => unreachable!(),
         }
@@ -174,6 +184,21 @@ impl<'a> Compiler<'a> {
         self.parse_precedence(rule.precedence.next());
 
         match operator_type {
+            TokenType::BangEqual => {
+                self.emit_byte(OpCode::OpEqual);
+                self.emit_byte(OpCode::OpNot);
+            }
+            TokenType::EqualEqual => self.emit_byte(OpCode::OpEqual),
+            TokenType::Greater => self.emit_byte(OpCode::OpGreater),
+            TokenType::GreaterEqual => {
+                self.emit_byte(OpCode::OpLess);
+                self.emit_byte(OpCode::OpNot);
+            }
+            TokenType::Less => self.emit_byte(OpCode::OpLess),
+            TokenType::LessEqual => {
+                self.emit_byte(OpCode::OpGreater);
+                self.emit_byte(OpCode::OpNot);
+            }
             TokenType::Plus => self.emit_byte(OpCode::OpAdd),
             TokenType::Minus => self.emit_byte(OpCode::OpSubtract),
             TokenType::Star => self.emit_byte(OpCode::OpMultiply),
@@ -216,21 +241,43 @@ impl<'a> Compiler<'a> {
             TokenType::Plus => ParseRule::new(None, Some(Compiler::binary), Precedence::Term),
             TokenType::Slash => ParseRule::new(None, Some(Compiler::binary), Precedence::Factor),
             TokenType::Star => ParseRule::new(None, Some(Compiler::binary), Precedence::Factor),
+            TokenType::Bang => ParseRule::new(Some(Compiler::unary), None, Precedence::None),
+            TokenType::BangEqual => {
+                ParseRule::new(None, Some(Compiler::binary), Precedence::Equality)
+            }
+            TokenType::EqualEqual => {
+                ParseRule::new(None, Some(Compiler::binary), Precedence::Equality)
+            }
+            TokenType::Greater => {
+                ParseRule::new(None, Some(Compiler::binary), Precedence::Comparison)
+            }
+            TokenType::GreaterEqual => {
+                ParseRule::new(None, Some(Compiler::binary), Precedence::Comparison)
+            }
+            TokenType::Less => ParseRule::new(None, Some(Compiler::binary), Precedence::Comparison),
+            TokenType::LessEqual => {
+                ParseRule::new(None, Some(Compiler::binary), Precedence::Comparison)
+            }
             TokenType::Number => ParseRule::new(Some(Compiler::number), None, Precedence::None),
+            TokenType::False => ParseRule::new(Some(Compiler::literal), None, Precedence::None),
+            TokenType::True => ParseRule::new(Some(Compiler::literal), None, Precedence::None),
+            TokenType::Nil => ParseRule::new(Some(Compiler::literal), None, Precedence::None),
             _ => ParseRule::new(None, None, Precedence::None),
         }
     }
 
     fn emit_byte(&mut self, opcode: OpCode) {
-        self.chunk.write(opcode);
+        let line = self.parser.previous.line as usize;
+        self.chunk.write(opcode, line);
     }
 
     fn emit_bytes(&mut self, byte1: OpCode, byte2: u8) {
         self.emit_byte(byte1);
-        self.chunk.write_byte(byte2);
+        let line = self.parser.previous.line as usize;
+        self.chunk.write_byte(byte2, line);
     }
 
-    fn emit_constant(&mut self, value: f64) {
+    fn emit_constant(&mut self, value: Value) {
         let constant = self.chunk.add_constant(value);
         self.emit_bytes(OpCode::OpConstant, constant as u8);
     }
