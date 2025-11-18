@@ -12,11 +12,12 @@ impl ValueArray {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Value {
     Bool(bool),
     Nil,
     Number(f64),
+    String(String),
 }
 
 impl Value {
@@ -32,6 +33,10 @@ impl Value {
         Value::Number(value)
     }
 
+    pub fn string(value: String) -> Self {
+        Value::String(value)
+    }
+
     pub fn is_bool(&self) -> bool {
         matches!(self, Value::Bool(_))
     }
@@ -42,6 +47,10 @@ impl Value {
 
     pub fn is_number(&self) -> bool {
         matches!(self, Value::Number(_))
+    }
+
+    pub fn is_string(&self) -> bool {
+        matches!(self, Value::String(_))
     }
 
     pub fn as_bool(&self) -> bool {
@@ -58,6 +67,13 @@ impl Value {
         }
     }
 
+    pub fn as_string(&self) -> &str {
+        match self {
+            Value::String(s) => s.as_str(),
+            _ => panic!("Not a string"),
+        }
+    }
+
     pub fn is_falsey(&self) -> bool {
         matches!(self, Value::Nil | Value::Bool(false))
     }
@@ -69,6 +85,7 @@ impl PartialEq for Value {
             (Value::Bool(a), Value::Bool(b)) => a == b,
             (Value::Nil, Value::Nil) => true,
             (Value::Number(a), Value::Number(b)) => a == b,
+            (Value::String(a), Value::String(b)) => a == b,
             _ => false,
         }
     }
@@ -79,5 +96,6 @@ pub fn print_value(value: &Value) {
         Value::Bool(b) => print!("{}", b),
         Value::Nil => print!("nil"),
         Value::Number(n) => print!("{}", n),
+        Value::String(s) => print!("{}", s),
     }
 }

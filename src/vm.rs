@@ -84,13 +84,19 @@ impl VM {
                     self.push(Value::number(-value));
                 }
                 x if x == OpCode::OpAdd as u8 => {
-                    if !self.peek(0).is_number() || !self.peek(1).is_number() {
-                        self.runtime_error("Operands must be numbers.");
+                    if self.peek(0).is_string() && self.peek(1).is_string() {
+                        let b = self.pop();
+                        let a = self.pop();
+                        let result = format!("{}{}", a.as_string(), b.as_string());
+                        self.push(Value::string(result));
+                    } else if self.peek(0).is_number() && self.peek(1).is_number() {
+                        let b = self.pop().as_number();
+                        let a = self.pop().as_number();
+                        self.push(Value::number(a + b));
+                    } else {
+                        self.runtime_error("Operands must be two numbers or two strings.");
                         return InterpretResult::RuntimeError;
                     }
-                    let b = self.pop().as_number();
-                    let a = self.pop().as_number();
-                    self.push(Value::number(a + b));
                 }
                 x if x == OpCode::OpSubtract as u8 => {
                     if !self.peek(0).is_number() || !self.peek(1).is_number() {

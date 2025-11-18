@@ -149,6 +149,12 @@ impl<'a> Compiler<'a> {
         self.emit_constant(Value::number(value));
     }
 
+    fn string(&mut self) {
+        let lexeme = self.parser.previous.lexeme;
+        let string_value = lexeme[1..lexeme.len()-1].to_string();
+        self.emit_constant(Value::string(string_value));
+    }
+
     fn literal(&mut self) {
         match self.parser.previous.token_type {
             TokenType::False => self.emit_byte(OpCode::OpFalse),
@@ -259,6 +265,7 @@ impl<'a> Compiler<'a> {
                 ParseRule::new(None, Some(Compiler::binary), Precedence::Comparison)
             }
             TokenType::Number => ParseRule::new(Some(Compiler::number), None, Precedence::None),
+            TokenType::String => ParseRule::new(Some(Compiler::string), None, Precedence::None),
             TokenType::False => ParseRule::new(Some(Compiler::literal), None, Precedence::None),
             TokenType::True => ParseRule::new(Some(Compiler::literal), None, Precedence::None),
             TokenType::Nil => ParseRule::new(Some(Compiler::literal), None, Precedence::None),
