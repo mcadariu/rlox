@@ -1,5 +1,6 @@
 use crate::chunk::{Chunk, OpCode, Value};
 use crate::scanner::{Scanner, Token, TokenType, init_scanner};
+use crate::vm::VM;
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 enum Precedence {
@@ -113,16 +114,18 @@ impl<'a> Parser<'a> {
 struct Compiler<'a> {
     parser: Parser<'a>,
     chunk: Chunk,
+    vm: &'a mut VM,
 }
 
 impl<'a> Compiler<'a> {
-    fn new(source: &'a str) -> Self {
+    fn new(source: &'a str, vm: &'a mut VM) -> Self {
         let scanner = init_scanner(source);
         let parser = Parser::new(scanner);
 
         Compiler {
             parser,
             chunk: Chunk::new(),
+            vm,
         }
     }
 
@@ -152,7 +155,8 @@ impl<'a> Compiler<'a> {
     fn string(&mut self) {
         let lexeme = self.parser.previous.lexeme;
         let string_value = lexeme[1..lexeme.len()-1].to_string();
-        self.emit_constant(Value::string(string_value));
+        let interned = self.vm.intern_string(string_value);
+        self.emit_constant(Value::string(interned));
     }
 
     fn literal(&mut self) {
@@ -316,7 +320,7 @@ impl<'a> ParseRule<'a> {
     }
 }
 
-pub fn compile(source: &str) -> Option<Chunk> {
-    let compiler = Compiler::new(source);
+pub fn compile(source: &str, vm: &mut VM) -> Option<Chunk> {
+    let compiler = Compiler::new(source, vm);
     compiler.compile()
 }

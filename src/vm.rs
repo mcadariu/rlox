@@ -1,4 +1,5 @@
 use crate::chunk::{Chunk, OpCode};
+use crate::table::Table;
 use crate::value::Value;
 
 const STACK_MAX: usize = 256;
@@ -14,6 +15,7 @@ pub struct VM {
     chunk: Option<Chunk>,
     ip: usize,
     stack: Vec<Value>,
+    strings: Table,
 }
 
 impl VM {
@@ -22,6 +24,7 @@ impl VM {
             chunk: None,
             ip: 0,
             stack: Vec::with_capacity(STACK_MAX),
+            strings: Table::new(),
         }
     }
 
@@ -164,5 +167,47 @@ impl VM {
         eprintln!("{}", message);
         let line = self.chunk.as_ref().unwrap().lines[self.ip - 1];
         eprintln!("[line {}] in script", line);
+    }
+
+    pub fn intern_string(&mut self, string: String) -> String {
+        let hash = crate::table::hash_string(&string);
+
+        if let Some(interned) = self.strings.find_string(&string, hash) {
+            return interned.to_string();
+        }
+
+        self.strings.set(string.clone(), Value::nil());
+        string
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_string_interning() {
+        let mut vm = VM::new();
+
+        let str1 = vm.intern_string("hello".to_string());
+        let str2 = vm.intern_string("hello".to_string());
+        let str3 = vm.intern_string("world".to_string());
+
+        assert_eq!(str1, str2);
+        assert_eq!(str1, "hello");
+        assert_ne!(str1, str3);
+        assert_eq!(str3, "world");
+    }
+
+    #[test]
+    fn test_multiple_interning() {
+        let mut vm = VM::new();
+
+        for _ in 0..10 {
+            vm.intern_string("test".to_string());
+        }
+
+        let result = vm.intern_string("test".to_string());
+        assert_eq!(result, "test");
     }
 }

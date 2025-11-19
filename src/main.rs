@@ -6,6 +6,7 @@ mod chunk;
 mod compiler;
 mod debug;
 mod scanner;
+mod table;
 mod value;
 mod vm;
 
@@ -34,7 +35,7 @@ fn run_file(path: &str, vm: &mut VM) {
 }
 
 fn interpret(source: &str, vm: &mut VM) -> InterpretResult {
-    match compiler::compile(source) {
+    match compiler::compile(source, vm) {
         Some(chunk) => vm.interpret(chunk),
         None => InterpretResult::CompileError,
     }
