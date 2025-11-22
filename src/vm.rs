@@ -16,6 +16,7 @@ pub struct VM {
     ip: usize,
     stack: Vec<Value>,
     strings: Table,
+    globals: Table,
 }
 
 impl VM {
@@ -25,6 +26,7 @@ impl VM {
             ip: 0,
             stack: Vec::with_capacity(STACK_MAX),
             strings: Table::new(),
+            globals: Table::new(),
         }
     }
 
@@ -50,6 +52,9 @@ impl VM {
                 }
                 x if x == OpCode::OpFalse as u8 => {
                     self.push(Value::bool(false));
+                }
+                x if x == OpCode::OpPop as u8 => {
+                    self.pop();
                 }
                 x if x == OpCode::OpEqual as u8 => {
                     let b = self.pop();
@@ -128,9 +133,39 @@ impl VM {
                     let a = self.pop().as_number();
                     self.push(Value::number(a / b));
                 }
-                x if x == OpCode::OpReturn as u8 => {
+                x if x == OpCode::OpPrint as u8 => {
                     crate::value::print_value(&self.pop());
                     println!();
+                }
+                x if x == OpCode::OpDefineGlobal as u8 => {
+                    let constant = self.read_constant();
+                    let name = constant.as_string().to_string();
+                    let value = self.pop();
+                    self.globals.set(name, value);
+                }
+                x if x == OpCode::OpGetGlobal as u8 => {
+                    let constant = self.read_constant();
+                    let name = constant.as_string();
+                    match self.globals.get(name) {
+                        Some(value) => {
+                            self.push(value.clone());
+                        }
+                        None => {
+                            self.runtime_error(&format!("Undefined variable '{}'.", name));
+                            return InterpretResult::RuntimeError;
+                        }
+                    }
+                }
+                x if x == OpCode::OpSetGlobal as u8 => {
+                    let constant = self.read_constant();
+                    let name = constant.as_string().to_string();
+                    if self.globals.set(name.clone(), self.peek(0).clone()) {
+                        self.globals.delete(&name);
+                        self.runtime_error(&format!("Undefined variable '{}'.", name));
+                        return InterpretResult::RuntimeError;
+                    }
+                }
+                x if x == OpCode::OpReturn as u8 => {
                     return InterpretResult::Ok;
                 }
                 _ => {

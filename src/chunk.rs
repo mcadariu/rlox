@@ -7,6 +7,7 @@ pub enum OpCode {
     OpNil,
     OpTrue,
     OpFalse,
+    OpPop,
     OpEqual,
     OpGreater,
     OpLess,
@@ -16,6 +17,10 @@ pub enum OpCode {
     OpDivide,
     OpNot,
     OpNegate,
+    OpPrint,
+    OpDefineGlobal,
+    OpGetGlobal,
+    OpSetGlobal,
     OpReturn,
 }
 

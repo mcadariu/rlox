@@ -109,6 +109,18 @@ impl<'a> Parser<'a> {
         eprintln!(": {}", message);
         self.had_error = true;
     }
+
+    fn check(&self, token_type: TokenType) -> bool {
+        self.current.token_type == token_type
+    }
+
+    fn match_token(&mut self, token_type: TokenType) -> bool {
+        if !self.check(token_type) {
+            return false;
+        }
+        self.advance();
+        true
+    }
 }
 
 struct Compiler<'a> {
@@ -131,15 +143,90 @@ impl<'a> Compiler<'a> {
 
     fn compile(mut self) -> Option<Chunk> {
         self.parser.advance();
-        self.expression();
-        self.parser
-            .consume(TokenType::Eof, "Expect end of expression.");
+
+        while !self.parser.check(TokenType::Eof) {
+            self.declaration();
+        }
+
         self.end_compiler();
 
         if self.parser.had_error {
             None
         } else {
             Some(self.chunk)
+        }
+    }
+
+    fn declaration(&mut self) {
+        if self.parser.match_token(TokenType::Var) {
+            self.var_declaration();
+        } else {
+            self.statement();
+        }
+
+        if self.parser.panic_mode {
+            self.synchronize();
+        }
+    }
+
+    fn var_declaration(&mut self) {
+        let global = self.parse_variable("Expect variable name.");
+
+        if self.parser.match_token(TokenType::Equal) {
+            self.expression();
+        } else {
+            self.emit_byte(OpCode::OpNil);
+        }
+
+        self.parser
+            .consume(TokenType::Semicolon, "Expect ';' after variable declaration.");
+
+        self.define_variable(global);
+    }
+
+    fn statement(&mut self) {
+        if self.parser.match_token(TokenType::Print) {
+            self.print_statement();
+        } else {
+            self.expression_statement();
+        }
+    }
+
+    fn print_statement(&mut self) {
+        self.expression();
+        self.parser
+            .consume(TokenType::Semicolon, "Expect ';' after value.");
+        self.emit_byte(OpCode::OpPrint);
+    }
+
+    fn expression_statement(&mut self) {
+        self.expression();
+        self.parser
+            .consume(TokenType::Semicolon, "Expect ';' after expression.");
+        self.emit_byte(OpCode::OpPop);
+    }
+
+    fn synchronize(&mut self) {
+        self.parser.panic_mode = false;
+
+        while self.parser.current.token_type != TokenType::Eof {
+            if self.parser.previous.token_type == TokenType::Semicolon {
+                return;
+            }
+
+            match self.parser.current.token_type {
+                TokenType::Class
+                | TokenType::Fun
+                | TokenType::Var
+                | TokenType::For
+                | TokenType::If
+                | TokenType::While
+                | TokenType::Print
+                | TokenType::Return => return,
+                _ => {}
+            }
+
+            self.parser.advance();
         }
     }
 
@@ -157,6 +244,21 @@ impl<'a> Compiler<'a> {
         let string_value = lexeme[1..lexeme.len()-1].to_string();
         let interned = self.vm.intern_string(string_value);
         self.emit_constant(Value::string(interned));
+    }
+
+    fn variable(&mut self) {
+        self.named_variable(self.parser.previous.lexeme, true);
+    }
+
+    fn named_variable(&mut self, name: &str, can_assign: bool) {
+        let arg = self.identifier_constant(name);
+
+        if can_assign && self.parser.match_token(TokenType::Equal) {
+            self.expression();
+            self.emit_bytes(OpCode::OpSetGlobal, arg);
+        } else {
+            self.emit_bytes(OpCode::OpGetGlobal, arg);
+        }
     }
 
     fn literal(&mut self) {
@@ -236,6 +338,10 @@ impl<'a> Compiler<'a> {
                 infix_fn(self);
             }
         }
+
+        if self.parser.check(TokenType::Equal) {
+            self.parser.error("Invalid assignment target.");
+        }
     }
 
     fn get_rule(&self, token_type: TokenType) -> ParseRule<'a> {
@@ -268,6 +374,9 @@ impl<'a> Compiler<'a> {
             TokenType::LessEqual => {
                 ParseRule::new(None, Some(Compiler::binary), Precedence::Comparison)
             }
+            TokenType::Identifier => {
+                ParseRule::new(Some(Compiler::variable), None, Precedence::None)
+            }
             TokenType::Number => ParseRule::new(Some(Compiler::number), None, Precedence::None),
             TokenType::String => ParseRule::new(Some(Compiler::string), None, Precedence::None),
             TokenType::False => ParseRule::new(Some(Compiler::literal), None, Precedence::None),
@@ -286,6 +395,20 @@ impl<'a> Compiler<'a> {
         self.emit_byte(byte1);
         let line = self.parser.previous.line as usize;
         self.chunk.write_byte(byte2, line);
+    }
+
+    fn parse_variable(&mut self, error_message: &str) -> u8 {
+        self.parser.consume(TokenType::Identifier, error_message);
+        self.identifier_constant(self.parser.previous.lexeme)
+    }
+
+    fn identifier_constant(&mut self, name: &str) -> u8 {
+        let interned = self.vm.intern_string(name.to_string());
+        self.chunk.add_constant(Value::string(interned)) as u8
+    }
+
+    fn define_variable(&mut self, global: u8) {
+        self.emit_bytes(OpCode::OpDefineGlobal, global);
     }
 
     fn emit_constant(&mut self, value: Value) {
