@@ -165,6 +165,14 @@ impl VM {
                         return InterpretResult::RuntimeError;
                     }
                 }
+                x if x == OpCode::OpGetLocal as u8 => {
+                    let slot = self.read_byte() as usize;
+                    self.push(self.stack[slot].clone());
+                }
+                x if x == OpCode::OpSetLocal as u8 => {
+                    let slot = self.read_byte() as usize;
+                    self.stack[slot] = self.peek(0).clone();
+                }
                 x if x == OpCode::OpReturn as u8 => {
                     return InterpretResult::Ok;
                 }

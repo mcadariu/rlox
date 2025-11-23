@@ -21,6 +21,8 @@ pub enum OpCode {
     OpDefineGlobal,
     OpGetGlobal,
     OpSetGlobal,
+    OpGetLocal,
+    OpSetLocal,
     OpReturn,
 }
 
