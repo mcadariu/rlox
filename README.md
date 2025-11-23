@@ -5,7 +5,14 @@ An implementation of the bytecode virtual machine for Lox, the programming langu
 At this moment it can handle simple programs like: 
 
 ```java
-var a = 1;
-var b = 2;
-print a + b;
+{
+  var a = 1;
+  print a;
+  a = 2;
+  print a;
+  {
+    var b = a + 1;
+    print b;
+  }
+}
 ```
