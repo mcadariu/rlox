@@ -173,6 +173,20 @@ impl VM {
                     let slot = self.read_byte() as usize;
                     self.stack[slot] = self.peek(0).clone();
                 }
+                x if x == OpCode::OpJumpIfFalse as u8 => {
+                    let offset = self.read_short();
+                    if self.peek(0).is_falsey() {
+                        self.ip += offset as usize;
+                    }
+                }
+                x if x == OpCode::OpJump as u8 => {
+                    let offset = self.read_short();
+                    self.ip += offset as usize;
+                }
+                x if x == OpCode::OpLoop as u8 => {
+                    let offset = self.read_short();
+                    self.ip -= offset as usize;
+                }
                 x if x == OpCode::OpReturn as u8 => {
                     return InterpretResult::Ok;
                 }
@@ -192,6 +206,12 @@ impl VM {
     fn read_constant(&mut self) -> Value {
         let index = self.read_byte() as usize;
         self.chunk.as_ref().unwrap().get_constant(index)
+    }
+
+    fn read_short(&mut self) -> u16 {
+        let high = self.read_byte() as u16;
+        let low = self.read_byte() as u16;
+        (high << 8) | low
     }
 
     fn push(&mut self, value: Value) {

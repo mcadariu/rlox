@@ -216,6 +216,8 @@ impl<'a> Compiler<'a> {
     fn statement(&mut self) {
         if self.parser.match_token(TokenType::Print) {
             self.print_statement();
+        } else if self.parser.match_token(TokenType::If) {
+            self.if_statement();
         } else if self.parser.match_token(TokenType::LeftBrace) {
             self.begin_scope();
             self.block();
@@ -239,6 +241,29 @@ impl<'a> Compiler<'a> {
         self.parser
             .consume(TokenType::Semicolon, "Expect ';' after value.");
         self.emit_byte(OpCode::OpPrint);
+    }
+
+    fn if_statement(&mut self) {
+        self.parser.consume(TokenType::LeftParen, "Expect '(' after 'if'.");
+        self.expression();
+        self.parser.consume(TokenType::RightParen, "Expect ')' after condition.");
+
+        // Jump to else branch if condition is false
+        let then_jump = self.emit_jump(OpCode::OpJumpIfFalse);
+        self.emit_byte(OpCode::OpPop); // Pop condition value
+        self.statement();
+
+        // Jump over the else branch
+        let else_jump = self.emit_jump(OpCode::OpJump);
+
+        self.patch_jump(then_jump);
+        self.emit_byte(OpCode::OpPop); // Pop condition value
+
+        if self.parser.match_token(TokenType::Else) {
+            self.statement();
+        }
+
+        self.patch_jump(else_jump);
     }
 
     fn expression_statement(&mut self) {
@@ -402,6 +427,32 @@ impl<'a> Compiler<'a> {
         }
     }
 
+    fn and(&mut self) {
+        // Left operand is already on the stack
+        // If it's false, skip the right operand
+        let end_jump = self.emit_jump(OpCode::OpJumpIfFalse);
+
+        // Left was truthy, so pop it and evaluate right
+        self.emit_byte(OpCode::OpPop);
+        self.parse_precedence(Precedence::And);
+
+        self.patch_jump(end_jump);
+    }
+
+    fn or(&mut self) {
+        // Left operand is already on the stack
+        // If it's false, we need to evaluate the right operand
+        let else_jump = self.emit_jump(OpCode::OpJumpIfFalse);
+        // If it's true, skip the right operand
+        let end_jump = self.emit_jump(OpCode::OpJump);
+
+        self.patch_jump(else_jump);
+        self.emit_byte(OpCode::OpPop);
+
+        self.parse_precedence(Precedence::Or);
+        self.patch_jump(end_jump);
+    }
+
     fn parse_precedence(&mut self, precedence: Precedence) {
         self.parser.advance();
         let prefix_rule = self.get_rule(self.parser.previous.token_type).prefix;
@@ -465,6 +516,8 @@ impl<'a> Compiler<'a> {
             TokenType::False => ParseRule::new(Some(Compiler::literal), None, Precedence::None),
             TokenType::True => ParseRule::new(Some(Compiler::literal), None, Precedence::None),
             TokenType::Nil => ParseRule::new(Some(Compiler::literal), None, Precedence::None),
+            TokenType::And => ParseRule::new(None, Some(Compiler::and), Precedence::And),
+            TokenType::Or => ParseRule::new(None, Some(Compiler::or), Precedence::Or),
             _ => ParseRule::new(None, None, Precedence::None),
         }
     }
@@ -478,6 +531,15 @@ impl<'a> Compiler<'a> {
         self.emit_byte(byte1);
         let line = self.parser.previous.line as usize;
         self.chunk.write_byte(byte2, line);
+    }
+
+    fn emit_jump(&mut self, instruction: OpCode) -> usize {
+        let line = self.parser.previous.line as usize;
+        self.chunk.emit_jump(instruction, line)
+    }
+
+    fn patch_jump(&mut self, offset: usize) {
+        self.chunk.patch_jump(offset);
     }
 
     fn parse_variable(&mut self, error_message: &str) -> u8 {
